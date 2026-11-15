@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>นาฬิกากลไกหรู · Noy</title>
+  <meta name="description" content="เว็บ 3D แยกชิ้นส่วนนาฬิกากลไกหรู คลิกดูเกร็ดฟิสิกส์ของแต่ละชิ้น" />
+  <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+  <link rel="icon" href="./favicon.ico" sizes="any" />
+  <meta http-equiv="Cache-Control" content="no-store" />
+  <link rel="stylesheet" href="./vendor/fonts/kanit/kanit.css?v=20261115d" />
+  <link rel="stylesheet" href="./css/styles.css?v=20261115d" />
+</head>
+<body>
+  <div id="app">
+    <canvas id="c" aria-label="โมเดลนาฬิกา 3 มิติ"></canvas>
+    <div id="loader">
+      <div class="spinner" aria-hidden="true"></div>
+      <div class="load-name">Noy</div>
+      <div class="load-detail" hidden></div>
+    </div>
+    <div class="ui">
+      <header class="top">
+        <div class="brand">
+          <div class="brand-kicker">Exploded view</div>
+          <h1>นาฬิกากลไกหรู</h1>
+          <p>เลื่อนลูกกลิ้งหรือลากสไลเดอร์เพื่อแยกชิ้นส่วน แล้วคลิกดูเกร็ดฟิสิกส์ของแต่ละชิ้น</p>
+        </div>
+        <div class="credit">Noy <small>ม.5 · Physics</small></div>
+      </header>
+      <aside id="info-card" aria-live="polite">
+        <div class="card-kicker">ชิ้นส่วน</div>
+        <h2 id="card-title"></h2>
+        <div class="en" id="card-en"></div>
+        <p id="card-fact"></p>
+        <div class="hint">คลิกชิ้นอื่น หรือคลิกพื้นหลังเพื่อปิด</div>
+      </aside>
+      <footer class="controls">
+        <div class="slider-row">
+          <span>ประกอบ</span>
+          <input type="range" id="explode" min="0" max="100" value="0" aria-label="ระดับการแยกชิ้นส่วน" />
+          <span>แยกชิ้น</span>
+        </div>
+        <div class="btns">
+          <button type="button" id="btn-explode">แยกชิ้นส่วน</button>
+          <button type="button" id="btn-assemble">ประกอบกลับ</button>
+          <button type="button" id="btn-xray">โหมด X-ray</button>
+          <button type="button" id="btn-rotate">หมุนอัตโนมัติ</button>
+        </div>
+      </footer>
+    </div>
+  </div>
+  <script>
+    // Use vendored copies on localhost / file / ?offline=1.
+    // Otherwise prefer jsDelivr (same host for Three and GSAP); if that import fails, reload with ?offline=1.
+    // Capture the boot script NOW — document.currentScript is null after await/fetch/setTimeout.
+    (function () {
+      const bootScript = document.currentScript;
+      const LOCAL = {
+        "three": "./vendor/three/three.module.js",
+        "three/addons/": "./vendor/three/addons/",
+        "gsap": "./vendor/gsap/index.js"
+      };
+      const VER = "0.170.0";
+      const CDN_BASE = "https://cdn.jsdelivr.net/npm/";
+      const CDN = {
+        "three": CDN_BASE + "three@" + VER + "/build/three.module.js",
+        "three/addons/": CDN_BASE + "three@" + VER + "/examples/jsm/",
+        "gsap": CDN_BASE + "gsap@3.12.7/index.js"
+      };
+
+      function isLocalHost() {
+        const h = location.hostname;
+        return h === "localhost" || h === "127.0.0.1" || h === "::1" || h === "[::1]";
+      }
+
+      const ASSET_V = "20261115d";
+
+      function showBootError(msg, err) {
+        const l = document.getElementById("loader");
+        if (!l) return;
+        l.classList.add("fatal");
+        l.classList.remove("hide");
+        const name = l.querySelector(".load-name");
+        if (name) name.textContent = msg;
+        const spin = l.querySelector(".spinner");
+        if (spin) spin.style.display = "none";
+        let detail = l.querySelector(".load-detail");
+        if (!detail) {
+          detail = document.createElement("div");
+          detail.className = "load-detail";
+          l.appendChild(detail);
+        }
+        const text = err && (err.message || String(err));
+        detail.textContent = text || "";
+        detail.hidden = !text;
+      }
+
+      function injectMap(imports, source) {
+        const el = document.createElement("script");
+        el.type = "importmap";
+        el.textContent = JSON.stringify({ imports: imports });
+        if (bootScript && bootScript.parentNode) bootScript.after(el);
+        else document.head.appendChild(el);
+        window.__WATCH_SOURCE__ = source;
+      }
+
+      function fallbackToLocal() {
+        const url = new URL(location.href);
+        if (url.searchParams.has("offline")) return false;
+        url.searchParams.set("offline", "1");
+        location.replace(url.toString());
+        return true;
+      }
+
+      function start(fromCdn) {
+        import("./js/main.js?v=" + ASSET_V).catch(function (err) {
+          console.error("Failed to start watch app:", err);
+          if (fromCdn && fallbackToLocal()) return;
+          showBootError("โหลดไฟล์ไม่สำเร็จค่ะ ลองรีเฟรชหน้านี้ หรือเปิดผ่านเซิร์ฟเวอร์ท้องถิ่นอีกครั้ง", err);
+        });
+      }
+
+      async function canUseCdn() {
+        if (location.protocol === "file:") return false;
+        if (isLocalHost()) return false;
+        if (navigator.onLine === false) return false;
+        if (new URLSearchParams(location.search).has("offline")) return false;
+        try {
+          const ctrl = new AbortController();
+          const t = setTimeout(function () { ctrl.abort(); }, 900);
+          // Probe the same host and Three module path the import map will use.
+          const r = await fetch(CDN.three, {
+            method: "GET",
+            signal: ctrl.signal,
+            mode: "cors",
+            cache: "no-store"
+          });
+          clearTimeout(t);
+          return r.ok;
+        } catch (e) {
+          return false;
+        }
+      }
+
+      canUseCdn().then(function (ok) {
+        injectMap(ok ? CDN : LOCAL, ok ? "cdn" : "local");
+        start(ok);
+      }).catch(function (err) {
+        console.warn("CDN check failed, using local vendor files.", err);
+        injectMap(LOCAL, "local");
+        start(false);
+      });
+    })();
+  </script>
+</body>
+</html>

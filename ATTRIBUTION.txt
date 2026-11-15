@@ -1,0 +1,13 @@
+Noy Mechanical Watch — exploded-view demo
+========================================
+
+Built as a self-contained static site. No accounts, no deployment.
+
+Libraries (vendored in ./vendor and also loadable from a CDN):
+- Three.js r170  — MIT License  https://threejs.org/
+- GSAP 3.12.7    — Standard "no charge" license (GreenSock)
+- Kanit font     — SIL Open Font License, via Google Fonts
+
+The watch is original procedural geometry (no third-party 3D models).
+Inspired by the interaction style of MilerDev's 3D exploded-view demos,
+but the script, model, and UI are original.
